@@ -1,20 +1,25 @@
 import rasterio
 import rasterio.features
 import rasterio.warp
+from rasterio.plot import show
 
-with rasterio.open('https://data.geo.admin.ch/ch.swisstopo.swissimage-dop10/swissimage-dop10_2021_2594-1138/swissimage-dop10_2021_2594-1138_0.1_2056.tif') as dataset:
+import rasterio
+from PIL import Image
+import numpy as np
 
-    # Read the dataset's valid data mask as a ndarray.
-    mask = dataset.dataset_mask()
+image_name = 'https://data.geo.admin.ch/ch.swisstopo.swissimage-dop10/swissimage-dop10_2021_2594-1138/swissimage-dop10_2021_2594-1138_0.1_2056.tif'
 
-    # Extract feature shapes and values from the array.
-    for geom, val in rasterio.features.shapes(
-            mask, transform=dataset.transform):
+with rasterio.open(image_name) as dataset:
+    # Read all bands (e.g., RGB)
+    data = dataset.read()
 
-        # Transform shapes from the dataset's own coordinate
-        # reference system to CRS84 (EPSG:4326).
-        geom = rasterio.warp.transform_geom(
-            dataset.crs, 'EPSG:4326', geom, precision=6)
+    # Rasterio returns (bands, height, width) → rearrange to (height, width, bands)
+    img = np.transpose(data, (1, 2, 0))
 
-        # Print GeoJSON shapes to stdout.
-        print(geom)
+    # Convert to uint8 (JPEG needs this, and many GeoTIFFs are uint16 or float)
+    if img.dtype != np.uint8:
+        img = (255 * (img.astype(np.float32) / img.max())).astype(np.uint8)
+
+    # Create and save with PIL
+    im = Image.fromarray(img)
+    im.save("output.jpg", "JPEG")
