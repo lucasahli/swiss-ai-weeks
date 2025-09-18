@@ -1,0 +1,2 @@
+# swiss-ai-weeks
+Hackathon
