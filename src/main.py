@@ -8,6 +8,22 @@ from PIL import Image
 import numpy as np
 from typing import List, Tuple
 
+def highlight_area(img: np.ndarray, row: int, col: int, size: int = 50):
+    """
+    Set all pixels around (row, col) to white (255) in a square of ±size.
+    Works on RGB or grayscale images.
+    """
+    rows, cols = img.shape[:2]
+
+    # Clamp the window to image bounds
+    r0 = max(0, row - size)
+    r1 = min(rows, row + size + 1)
+    c0 = max(0, col - size)
+    c1 = min(cols, col + size + 1)
+
+    img[r0:r1, c0:c1, :] = [255, 0, 0]
+    return img
+
 def bounds_from_filename(url: str) -> Tuple[int, int, int, int]:
     """
     Extract bounding box from a swissimage-dop10 filename.
@@ -80,28 +96,50 @@ with open(electronic_power_producer_path, newline='', encoding="utf-8") as csvfi
 
 
 # Check which files cover which coords
-for i, c in enumerate(coords):
-    if i >= 10:   # stop after 5 rows
+for i, coord in enumerate(coords):
+    if i >= 4:   # stop after 5 rows
         break
-    hits = find_covering_files(c, image_urls)
+    hits = find_covering_files(coord, image_urls)
     if hits:
-        print(f"✅ {c} is inside: {hits}")
+        print(f"✅ {coord} is inside: {hits}")
+        image_name = hits[0]
+        with rasterio.open(image_name) as dataset:
+            # Read all bands (e.g., RGB)
+            data = dataset.read()
+
+            # Rasterio returns (bands, height, width) → rearrange to (height, width, bands)
+            img = np.transpose(data, (1, 2, 0))
+
+            # Convert to uint8 (JPEG needs this, and many GeoTIFFs are uint16 or float)
+            if img.dtype != np.uint8:
+                img = (255 * (img.astype(np.float32) / img.max())).astype(np.uint8)
+
+            x, y, canton = coord
+            row, col = dataset.index(x, y)
+
+            # img[row, col,:] = 255
+            img = highlight_area(img, row=row, col=col, size=20)
+
+
+            # Create and save with PIL
+            im = Image.fromarray(img)
+            im.save("output.jpg", "JPEG")
     else:
-        print(f"❌ {c} not found in any file")
+        print(f"❌ {coord} not found in any file")
 
-image_name = 'https://data.geo.admin.ch/ch.swisstopo.swissimage-dop10/swissimage-dop10_2021_2594-1138/swissimage-dop10_2021_2594-1138_0.1_2056.tif'
-
-with rasterio.open(image_name) as dataset:
-    # Read all bands (e.g., RGB)
-    data = dataset.read()
-
-    # Rasterio returns (bands, height, width) → rearrange to (height, width, bands)
-    img = np.transpose(data, (1, 2, 0))
-
-    # Convert to uint8 (JPEG needs this, and many GeoTIFFs are uint16 or float)
-    if img.dtype != np.uint8:
-        img = (255 * (img.astype(np.float32) / img.max())).astype(np.uint8)
-
-    # Create and save with PIL
-    im = Image.fromarray(img)
-    im.save("output.jpg", "JPEG")
+# image_name = 'https://data.geo.admin.ch/ch.swisstopo.swissimage-dop10/swissimage-dop10_2021_2594-1138/swissimage-dop10_2021_2594-1138_0.1_2056.tif'
+#
+# with rasterio.open(image_name) as dataset:
+#     # Read all bands (e.g., RGB)
+#     data = dataset.read()
+#
+#     # Rasterio returns (bands, height, width) → rearrange to (height, width, bands)
+#     img = np.transpose(data, (1, 2, 0))
+#
+#     # Convert to uint8 (JPEG needs this, and many GeoTIFFs are uint16 or float)
+#     if img.dtype != np.uint8:
+#         img = (255 * (img.astype(np.float32) / img.max())).astype(np.uint8)
+#
+#     # Create and save with PIL
+#     im = Image.fromarray(img)
+#     im.save("output.jpg", "JPEG")
