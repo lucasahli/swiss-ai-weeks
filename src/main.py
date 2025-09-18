@@ -20,9 +20,12 @@ def bounds_from_filename(url: str) -> Tuple[int, int, int, int]:
 
     tile_x, tile_y = map(int, m.groups())
     left = tile_x * 1000
+    right = left + 1000
     bottom = tile_y * 1000
-    right = left + 2000
-    top = bottom + 2000
+    top = bottom + 1000
+
+    # print(url)
+    # print("bounds: left: " + str(left) + " right: " + str(right) + " bottom: " + str(bottom) + " top: ", str(top))
 
     return (left, bottom, right, top)
 
@@ -31,14 +34,14 @@ def find_covering_files(coord: Tuple[float, float], files: List[str]) -> List[st
     Find GeoTIFF files that contain the given coordinate.
 
     Args:
-        coord: (x, y) tuple in EPSG:2056
+        coord: (x, y, canton) tuple in EPSG:2056
         files: list of GeoTIFF file paths
 
     Returns:
         List of file paths that contain the coordinate.
     """
     matching_files = []
-    x, y = coord
+    x, y, canton = coord
 
     for f in files:
         try:
@@ -70,7 +73,7 @@ with open(electronic_power_producer_path, newline='', encoding="utf-8") as csvfi
 
     for i, row in enumerate(reader):
         try:
-            coords.append((int(row["_x"]), int(row["_y"])))
+            coords.append((int(row["_x"]), int(row["_y"]), row['Canton']))
         except ValueError:
             print("Invalid coord: " + row["_x"] + " " + row["_y"])
 
@@ -78,7 +81,7 @@ with open(electronic_power_producer_path, newline='', encoding="utf-8") as csvfi
 
 # Check which files cover which coords
 for i, c in enumerate(coords):
-    if i >= 5:   # stop after 5 rows
+    if i >= 10:   # stop after 5 rows
         break
     hits = find_covering_files(c, image_urls)
     if hits:
