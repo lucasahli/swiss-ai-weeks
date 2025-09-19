@@ -73,7 +73,7 @@ def find_covering_files(coord: Tuple[float, float], files: List[str]) -> List[st
     return matching_files
 
 
-
+buildings_bern_path = '../data/buildings_bern.csv'
 electronic_power_producer_path = '../data/electronic_power_producers/ElectricityProductionPlant.csv'
 
 import csv
